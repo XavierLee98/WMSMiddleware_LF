@@ -73,7 +73,15 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
 
                         for (int i = 0; i < dt.Rows.Count; i++)
                         {
-                            oPickLists_Lines.SetCurrentLine(int.Parse(dt.Rows[i]["BaseLine"].ToString()));
+
+                            for (int x = 0; x < oPickLists_Lines.Count; x++)
+                            {
+                                oPickLists_Lines.SetCurrentLine(x);
+                                if (oPickLists_Lines.LineNumber == int.Parse(dt.Rows[i]["BaseLine"].ToString()))
+                                    break;
+                            }
+
+                            //oPickLists_Lines.SetCurrentLine(int.Parse(dt.Rows[i]["BaseLine"].ToString()));
                             oPickLists_Lines.PickedQuantity = double.Parse(dt.Rows[i]["quantity"].ToString());
                             oPickLists_Lines.UserFields.Fields.Item("U_Weight").Value = double.Parse(dt.Rows[i]["LineWeight"].ToString());
                             totalWeight += double.Parse(dt.Rows[i]["LineWeight"].ToString());
