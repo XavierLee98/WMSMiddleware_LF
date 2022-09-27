@@ -125,7 +125,7 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                         if (sap.oCom.InTransaction)
                             sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
                             UpdateTotalWeight(CurrentDocNum);
-                            RemoveOnholdItem();
+                            //RemoveOnholdItem();
                             Log($"{key }\n {success_status }\n  { CurrentDocNum } \n");
                             ft_General.UpdateStatus(key, success_status, "", CurrentDocNum);
                         }
@@ -173,28 +173,28 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
             }
         }
 
-        static void RemoveOnholdItem()
-            {
-                try
-                {
-                    SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
-                    int result = 0;
-                    string deleteQuery = "DELETE FROM zmwSOHoldPickItem WHERE PickListDocEntry = @docEntry and PickListLineNum = @LineNum";
+        //static void RemoveOnholdItem()
+        //    {
+        //        try
+        //        {
+        //            SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
+        //            int result = 0;
+        //            string deleteQuery = "DELETE FROM zmwSOHoldPickItem WHERE PickListDocEntry = @docEntry and PickListLineNum = @LineNum";
 
-                    if (dt.Rows.Count > 0)
-                    {
-                        for (int i = 0; i < dt.Rows.Count; i++)
-                        {
-                            result = conn.Execute(deleteQuery, new { docEntry = dt.Rows[i]["SourceDocEntry"].ToString() , LineNum = dt.Rows[i]["SourceLineNum"] });
-                        }
-                    }
+        //            if (dt.Rows.Count > 0)
+        //            {
+        //                for (int i = 0; i < dt.Rows.Count; i++)
+        //                {
+        //                    result = conn.Execute(deleteQuery, new { docEntry = dt.Rows[i]["SourceDocEntry"].ToString() , LineNum = dt.Rows[i]["SourceLineNum"] });
+        //                }
+        //            }
 
-                }
-                catch (Exception ex)
-                {
-                     Log($"{ ex.Message } \n");
-                }
-            }
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //             Log($"{ ex.Message } \n");
+        //        }
+        //    }
 
 
     }
