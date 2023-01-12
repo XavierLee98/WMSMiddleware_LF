@@ -245,7 +245,20 @@ namespace IMAppSapMidware_NetCore.Helper
                                 catch (Exception ex)
                                 {
                                     Log($"{ ex.Message } \n");
-                                    ft_General.UpdateError("OPRR", ex.Message);
+                                    ft_General.UpdateError("OPKL", ex.Message);
+                                }
+                                break;
+                            }
+                        case "Reset Pick List":
+                            {
+                                try
+                                {
+                                    ft_OPKL_ClearAll.ClearAll();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log($"{ ex.Message } \n");
+                                    ft_General.UpdateError("OPKL_Clear", ex.Message);
                                 }
                                 break;
                             }

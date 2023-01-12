@@ -50,6 +50,11 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
 
                     if (dt.Rows.Count > 0)
                     {
+                        string key = dt.Rows[0]["key"].ToString();
+                        currentKey = key;
+                        currentStatus = failed_status;
+                        CurrentDocNum = dt.Rows[0]["sapDocNumber"].ToString();
+
                         par = SAP.GetSAPUser();
                         sap = SAP.getSAPCompany(par);
 
@@ -59,16 +64,11 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                             throw new Exception(sap.errMsg);
                         }
 
-                        string key = dt.Rows[0]["key"].ToString();
-                        currentKey = key;
-                        currentStatus = failed_status;
-
                         if (!sap.oCom.InTransaction)
                             sap.oCom.StartTransaction();
 
                         oPickLists = (SAPbobsCOM.PickLists)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oPickLists);
                         oPickLists.GetByKey(int.Parse(dt.Rows[0]["sapDocNumber"].ToString()));
-                        CurrentDocNum = dt.Rows[0]["sapDocNumber"].ToString();
                         oPickLists_Lines = oPickLists.Lines;
 
                         for (int i = 0; i < dt.Rows.Count; i++)

@@ -1,5 +1,7 @@
-﻿using IMAppSapMidware_NetCore.Helper.SQL;
+﻿using Dapper;
+using IMAppSapMidware_NetCore.Helper.SQL;
 using IMAppSapMidware_NetCore.Models.SAPModels;
+using Microsoft.Data.SqlClient;
 using SAPbobsCOM;
 using System;
 using System.Collections.Generic;
@@ -17,8 +19,6 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
         static string currentKey = string.Empty;
         static string currentStatus = string.Empty;
         static string CurrentDocNum = string.Empty;
-
-        public static string Erp_DBConnStr { get; set; } = string.Empty;
 
         static DataTable dt = null;
         static SAPParam par;
@@ -44,6 +44,11 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
 
                 if (dt.Rows.Count > 0)
                 {
+                    string key = dt.Rows[0]["key"].ToString();
+                    currentKey = key;
+                    currentStatus = failed_status;
+                    CurrentDocNum = dt.Rows[0]["AbsEntry"].ToString();
+
                     par = SAP.GetSAPUser();
                     sap = SAP.getSAPCompany(par);
 
@@ -53,12 +58,7 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                         throw new Exception(sap.errMsg);
                     }
 
-                    string key = dt.Rows[0]["key"].ToString();
-                    currentKey = key;
-                    currentStatus = failed_status;
-
                     oPickLists = (SAPbobsCOM.PickLists)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oPickLists);
-                    CurrentDocNum = dt.Rows[0]["sapDocNumber"].ToString();
 
                     if (!oPickLists.GetByKey(int.Parse(CurrentDocNum)))
                     {
@@ -146,6 +146,12 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                     }
                     int retcode = oPickLists.Update();
 
+                    //if(retcode == 0)
+                    //{
+                    //    if (UpdateStatus(int.Parse(CurrentDocNum), out string errMsg) < 0)
+                    //        throw new Exception(errMsg);
+                    //}
+
                     if (retcode != 0)
                     {
                         if (sap.oCom.InTransaction)
@@ -156,6 +162,7 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                     {
                         if (sap.oCom.InTransaction)
                             sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+                        if (UpdateStatus(int.Parse(CurrentDocNum), out string errMsg) < 0) throw new Exception(errMsg);
                         Log($"{key }\n {success_status }\n  { CurrentDocNum } \n");
                         ft_General.UpdateStatus(key, success_status, "", CurrentDocNum);
                     }
@@ -168,6 +175,26 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                 Log($"{currentKey }\n {currentStatus }\n { ex.Message } \n");
                 ft_General.UpdateStatus(currentKey, currentStatus, ex.Message, CurrentDocNum);
             }
+        }
+
+        static int UpdateStatus(int absentry, out string errorMsg)
+        {
+            try
+            {
+                errorMsg = "";
+                var conn = new SqlConnection(Program._DbErpConnStr);
+                var result = conn.Execute("zwa_IMApp_PickList_spResetPickListStatus",
+                             new { AbsEntry = absentry },
+                             commandType: CommandType.StoredProcedure);
+
+                return result;
+            }
+            catch (Exception excep)
+            {
+                errorMsg = excep.ToString();
+                return -1;
+            }
+
         }
     }
 }

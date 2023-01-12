@@ -1321,7 +1321,7 @@ namespace IMAppSapMidware_NetCore
                 if (!String.IsNullOrEmpty(bp.ShipToBuildingFloorRoom)) oBP.ShipToBuildingFloorRoom = bp.ShipToBuildingFloorRoom;
                 if (!String.IsNullOrEmpty(bp.ShipToDefault)) oBP.ShipToDefault = bp.ShipToDefault;
                 if (bp.SinglePayment) oBP.SinglePayment = SAPbobsCOM.BoYesNoEnum.tYES;
-                if (bp.SubjectToWithholdingTax) oBP.SubjectToWithholdingTax = SAPbobsCOM.BoYesNoEnum.tYES;
+                if (bp.SubjectToWithholdingTax) oBP.SubjectToWithholdingTax = (BoYesNoNoneEnum)SAPbobsCOM.BoYesNoEnum.tYES;
                 if (bp.SurchargeOverlook) oBP.SurchargeOverlook = SAPbobsCOM.BoYesNoEnum.tYES;
                 if (!String.IsNullOrEmpty(bp.TaxExemptionLetterNum)) oBP.TaxExemptionLetterNum = bp.TaxExemptionLetterNum;
                 if (bp.Territory != 0) oBP.Territory = bp.Territory;
