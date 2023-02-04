@@ -34,123 +34,122 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                 Program.FilLogger?.Log(message);
             }
 
-            public async static void Post()
+        public async static void Post()
+        {
+            string request = "Update Pick List";
+            try
             {
-                string request = "Update Pick List";
-                try
+                string failed_status = "ONHOLD";
+                string success_status = "SUCCESS";
+                int cnt = 0, bin_cnt = 0, batch_cnt = 0, serial_cnt = 0, batchbin_cnt = 0;
+                int retcode = 0;
+                double totalWeight = 0;
+
+                LoadDataToDataTable(request);
+
+
+                if (dt.Rows.Count > 0)
                 {
-                    string failed_status = "ONHOLD";
-                    string success_status = "SUCCESS";
-                    int cnt = 0, bin_cnt = 0, batch_cnt = 0, serial_cnt = 0, batchbin_cnt = 0;
-                    int retcode = 0;
-                    double totalWeight=0;
+                    string key = dt.Rows[0]["key"].ToString();
+                    currentKey = key;
+                    currentStatus = failed_status;
+                    CurrentDocNum = dt.Rows[0]["sapDocNumber"].ToString();
 
-                    LoadDataToDataTable(request);
+                    par = SAP.GetSAPUser();
+                    sap = SAP.getSAPCompany(par);
 
-
-                    if (dt.Rows.Count > 0)
+                    if (!sap.connectSAP())
                     {
-                        par = SAP.GetSAPUser();
-                        sap = SAP.getSAPCompany(par);
+                        Log($"{sap.errMsg}");
+                        throw new Exception(sap.errMsg);
+                    }
 
-                        if (!sap.connectSAP())
+                    if (!sap.oCom.InTransaction)
+                        sap.oCom.StartTransaction();
+
+                    oPickLists = (SAPbobsCOM.PickLists)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oPickLists);
+                    oPickLists.GetByKey(int.Parse(dt.Rows[0]["sapDocNumber"].ToString()));
+                    oPickLists_Lines = oPickLists.Lines;
+
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+
+                        for (int x = 0; x < oPickLists_Lines.Count; x++)
                         {
-                            Log($"{sap.errMsg}");
-                            throw new Exception(sap.errMsg);
+                            oPickLists_Lines.SetCurrentLine(x);
+                            if (oPickLists_Lines.LineNumber == int.Parse(dt.Rows[i]["BaseLine"].ToString()))
+                                break;
                         }
 
-                        string key = dt.Rows[0]["key"].ToString();
-                        currentKey = key;
-                        currentStatus = failed_status;
+                        //oPickLists_Lines.SetCurrentLine(int.Parse(dt.Rows[i]["BaseLine"].ToString()));
+                        oPickLists_Lines.PickedQuantity = double.Parse(dt.Rows[i]["quantity"].ToString());
+                        oPickLists_Lines.UserFields.Fields.Item("U_Weight").Value = double.Parse(dt.Rows[i]["LineWeight"].ToString());
+                        totalWeight += double.Parse(dt.Rows[i]["LineWeight"].ToString());
 
-                        if (!sap.oCom.InTransaction)
-                            sap.oCom.StartTransaction();
 
-                        oPickLists = (SAPbobsCOM.PickLists)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oPickLists);
-                        oPickLists.GetByKey(int.Parse(dt.Rows[0]["sapDocNumber"].ToString()));
-                        CurrentDocNum = dt.Rows[0]["sapDocNumber"].ToString();
-                        oPickLists_Lines = oPickLists.Lines;
+                        DataRow[] dr = dtDetails.Select("guid='" + dt.Rows[i]["key"].ToString() + "' and itemcode='" + dt.Rows[i]["itemcode"].ToString() + "' and BaseLine = '" + dt.Rows[i]["BaseLine"].ToString() + "'");
 
-                        for (int i = 0; i < dt.Rows.Count; i++)
+                        if (dr.Length > 0)
                         {
-
-                            for (int x = 0; x < oPickLists_Lines.Count; x++)
+                            for (int x = 0; x < dr.Length; x++)
                             {
-                                oPickLists_Lines.SetCurrentLine(x);
-                                if (oPickLists_Lines.LineNumber == int.Parse(dt.Rows[i]["BaseLine"].ToString()))
-                                    break;
-                            }
-
-                            //oPickLists_Lines.SetCurrentLine(int.Parse(dt.Rows[i]["BaseLine"].ToString()));
-                            oPickLists_Lines.PickedQuantity = double.Parse(dt.Rows[i]["quantity"].ToString());
-                            oPickLists_Lines.UserFields.Fields.Item("U_Weight").Value = double.Parse(dt.Rows[i]["LineWeight"].ToString());
-                            totalWeight += double.Parse(dt.Rows[i]["LineWeight"].ToString());
-
-
-                            DataRow[] dr = dtDetails.Select("guid='" + dt.Rows[i]["key"].ToString() + "' and itemcode='" + dt.Rows[i]["itemcode"].ToString() + "' and BaseLine = '" + dt.Rows[i]["BaseLine"].ToString() + "'");
-
-                            if (dr.Length > 0)
-                            {
-                                for (int x = 0; x < dr.Length; x++)
+                                if (dr[x]["batchnumber"].ToString() != "")
                                 {
-                                    if (dr[x]["batchnumber"].ToString() != "")
-                                    {
-                                        if (batch_cnt > 0) oPickLists_Lines.BatchNumbers.Add();
+                                    if (batch_cnt > 0) oPickLists_Lines.BatchNumbers.Add();
 
-  
-                                        oPickLists_Lines.BatchNumbers.BatchNumber = dr[x]["batchnumber"].ToString();
-                                        oPickLists_Lines.BatchNumbers.Quantity = double.Parse(dr[x]["Quantity"].ToString());
-                                        oPickLists_Lines.BatchNumbers.BaseLineNumber = int.Parse(dr[x]["BaseLine"].ToString());
-                                        batch_cnt++;
-                                    }
+
+                                    oPickLists_Lines.BatchNumbers.BatchNumber = dr[x]["batchnumber"].ToString();
+                                    oPickLists_Lines.BatchNumbers.Quantity = double.Parse(dr[x]["Quantity"].ToString());
+                                    oPickLists_Lines.BatchNumbers.BaseLineNumber = int.Parse(dr[x]["BaseLine"].ToString());
+                                    batch_cnt++;
                                 }
                             }
-                            batch_cnt = 0;
                         }
+                        batch_cnt = 0;
+                    }
 
-                        retcode = oPickLists.Update();
+                    retcode = oPickLists.Update();
 
-                        if (retcode != 0)
-                        {
-                            if (sap.oCom.InTransaction)
-                                sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+                    if (retcode != 0)
+                    {
+                        if (sap.oCom.InTransaction)
+                            sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
 
-                            string message = sap.oCom.GetLastErrorDescription().ToString().Replace("'", "");
-                            Log($"{key }\n {failed_status }\n { message } \n");
-                            ft_General.UpdateStatus(key, failed_status, message, CurrentDocNum);
-                         }
-                        else
-                        {
+                        string message = sap.oCom.GetLastErrorDescription().ToString().Replace("'", "");
+                        Log($"{key }\n {failed_status }\n { message } \n");
+                        ft_General.UpdateStatus(key, failed_status, message, CurrentDocNum);
+                    }
+                    else
+                    {
 
                         if (sap.oCom.InTransaction)
                             sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
-                            UpdateTotalWeight(CurrentDocNum);
-                            //RemoveOnholdItem();
-                            Log($"{key }\n {success_status }\n  { CurrentDocNum } \n");
-                            ft_General.UpdateStatus(key, success_status, "", CurrentDocNum);
-                        }
-
-                    if (oPickLists != null) Marshal.ReleaseComObject(oPickLists);
-                        oPickLists = null;
-
+                        UpdateTotalWeight(CurrentDocNum);
+                        //RemoveOnholdItem();
+                        Log($"{key }\n {success_status }\n  { CurrentDocNum } \n");
+                        ft_General.UpdateStatus(key, success_status, "", CurrentDocNum);
                     }
 
-                }
-                catch (Exception ex)
-                {
-                    Log($"{ ex.Message } \n");
-                    ft_General.UpdateError("OPKL", ex.Message);
-                    Log($"{currentKey }\n {currentStatus }\n { ex.Message } \n");
-                    ft_General.UpdateStatus(currentKey, currentStatus, ex.Message, CurrentDocNum);
-                }
-                finally
-                {
-                    dt = null;
-                    dtDetails = null;
-                }
-            }
+                    if (oPickLists != null) Marshal.ReleaseComObject(oPickLists);
+                    oPickLists = null;
 
-            static void LoadDataToDataTable(string request)
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Log($"{ ex.Message } \n");
+                ft_General.UpdateError("OPKL", ex.Message);
+                Log($"{currentKey }\n {currentStatus }\n { ex.Message } \n");
+                ft_General.UpdateStatus(currentKey, currentStatus, ex.Message, CurrentDocNum);
+            }
+            finally
+            {
+                dt = null;
+                dtDetails = null;
+            }
+        }
+        static void LoadDataToDataTable(string request)
             {
                 dt = ft_General.LoadData("LoadOPKL_sp");
                 dt.DefaultView.Sort = "key, BaseLine";

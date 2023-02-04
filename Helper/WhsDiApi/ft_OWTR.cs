@@ -109,9 +109,12 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
                         //oDoc.CardCode = dt.Rows[i]["cardcode"].ToString();
                         oDoc.DocDate = DateTime.Parse(dt.Rows[i]["docdate"].ToString());
                         oDoc.TaxDate = DateTime.Parse(dt.Rows[i]["docdate"].ToString());
-                        oDoc.Comments = dt.Rows[i]["Comments"].ToString();
+                        if (dt.Rows[i]["Comments"].ToString() != "")
+                            oDoc.Comments = dt.Rows[i]["Comments"].ToString();
+                        if (dt.Rows[i]["JrnlMemo"].ToString() != "")
                         oDoc.JournalMemo = dt.Rows[i]["JrnlMemo"].ToString();
-                        oDoc.PriceList = ConvertPriceListToInt(dt.Rows[i]["PriceList"].ToString());
+                        if (dt.Rows[i]["PriceList"].ToString() != "")
+                            oDoc.PriceList = ConvertPriceListToInt(dt.Rows[i]["PriceList"].ToString());
                     //oDoc.FromWarehouse = dt.Rows[i]["fromwarehouse"].ToString();
 
                     details:
