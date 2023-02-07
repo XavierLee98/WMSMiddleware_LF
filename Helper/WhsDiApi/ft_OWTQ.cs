@@ -1,6 +1,8 @@
-﻿using IMAppSapMidware_NetCore.Models.SAPModels;
+﻿using Dapper;
+using IMAppSapMidware_NetCore.Models.SAPModels;
 using System;
 using System.Data;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace IMAppSapMidware_NetCore.Helper.SQL
@@ -102,9 +104,15 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
                         //oDoc.CardCode = dt.Rows[i]["cardcode"].ToString();
                         oDoc.DocDate = DateTime.Parse(dt.Rows[i]["docdate"].ToString());
                         oDoc.TaxDate = DateTime.Parse(dt.Rows[i]["docdate"].ToString());
-                    //oDoc.FromWarehouse = dt.Rows[i]["fromwarehouse"].ToString();
+                        if (dt.Rows[i]["Remarks"].ToString() != "")
+                            oDoc.Comments = dt.Rows[i]["Remarks"].ToString();
+                        if (dt.Rows[i]["JrnlMemo"].ToString() != "")
+                            oDoc.JournalMemo = dt.Rows[i]["JrnlMemo"].ToString();
+                        if (dt.Rows[i]["PriceList"].ToString() != "")
+                            oDoc.PriceList = ConvertPriceListToInt(dt.Rows[i]["PriceList"].ToString());
+                        //oDoc.FromWarehouse = dt.Rows[i]["fromwarehouse"].ToString();
 
-                    details:
+                        details:
                         oDoc.Lines.ItemCode = dt.Rows[i]["itemcode"].ToString();
                         oDoc.Lines.Quantity = double.Parse(dt.Rows[i]["quantity"].ToString());
                         oDoc.Lines.FromWarehouseCode = dt.Rows[i]["WarehouseFrom"].ToString();
@@ -153,6 +161,14 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
             {
                 dt = null;
             }
+        }
+
+        static int ConvertPriceListToInt(string pricename)
+        {
+            var conn = new Microsoft.Data.SqlClient.SqlConnection(Program._DbErpConnStr);
+            string query = "SELECT ListNum FROM OPLN WHERE ListName = @pricename";
+
+            return conn.Query<int>(query, new { pricename = pricename }).FirstOrDefault();
         }
     }
 }

@@ -311,9 +311,9 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
         static int ConvertPriceListToInt(string pricename)
         {
             var conn = new Microsoft.Data.SqlClient.SqlConnection(Program._DbErpConnStr);
-            string query = "SELECT ListNum FROM OPLN WHERE ListName = @ListName";
+            string query = "SELECT ListNum FROM OPLN WHERE ListName = @pricename";
 
-            return conn.Query<int>(query, new { ListName = pricename }).FirstOrDefault();
+            return conn.Query<int>(query, new { pricename = pricename }).FirstOrDefault();
         }
     }
 }
