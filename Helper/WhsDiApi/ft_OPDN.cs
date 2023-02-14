@@ -162,6 +162,7 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
                         if (dt.Rows[i]["numatcard"].ToString() != "")
                             oDoc.NumAtCard = dt.Rows[i]["numatcard"].ToString();
 
+
                         details:
                         oDoc.Lines.SetCurrentLine(cnt);
 
@@ -171,7 +172,9 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
                         oDoc.Lines.ItemCode = itemcode;
                         oDoc.Lines.Quantity = double.Parse(dt.Rows[i]["quantity"].ToString());
                         oDoc.Lines.WarehouseCode = dt.Rows[i]["whscode"].ToString();
-
+                        if(dt.Rows[i]["Machine"].ToString() != "")
+                        oDoc.Lines.COGSCostingCode = dt.Rows[i]["Machine"].ToString();
+                          
                         // add in the pur in remark 
                         // 20210403
                         var itemDetails = dt.Rows[i]["remarks"].ToString();
