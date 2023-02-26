@@ -34,6 +34,8 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
             Program.FilLogger?.Log(message);
         }
 
+        //Select batch From PickListAllocateTable (-)
+
         public static void ClearAll()
         {
             string request = "Clear Pick List";
@@ -121,14 +123,43 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
 
                                     if (oPickLists.Lines.OrderEntry == oDocument.Lines.DocEntry && oPickLists.Lines.OrderRowID == oDocument.Lines.LineNum && oPickLists.Lines.BaseObjectType == "17")
                                     {
+
+                                        DataTable batchTable = GetPickLineBatches(int.Parse(CurrentDocNum), x);
                                         oPickLists.Lines.PickedQuantity = 0;
 
                                         if (!string.IsNullOrEmpty(oDocument.Lines.BatchNumbers.BatchNumber))
                                         {
-                                            for (int i = 0; i < oPickLists.Lines.BatchNumbers.Count; i++)
+                                            bool isBatchFound = false;
+                                            double qty = 0;
+
+
+                                            for (int i = 0; i < oDocument.Lines.BatchNumbers.Count; i++)
                                             {
                                                 oDocument.Lines.BatchNumbers.SetCurrentLine(i);
-                                                oDocument.Lines.BatchNumbers.Quantity = 0;
+                                                foreach (DataRow row in batchTable.Rows)
+                                                {
+                                                    var count = batchTable.Rows;
+                                                    var batch1 = row["Batch"].ToString();
+                                                    var batch2 = oDocument.Lines.BatchNumbers.BatchNumber;
+                                                    if (row["Batch"].ToString() == oDocument.Lines.BatchNumbers.BatchNumber)
+                                                    {
+                                                        isBatchFound = true;
+                                                        qty = double.Parse(row["Quantity"].ToString());
+                                                        break;
+                                                    }
+                                                }
+
+                                                if (isBatchFound)
+                                                {
+                                                    if (oDocument.Lines.BatchNumbers.Quantity <= qty)
+                                                    {
+                                                        oDocument.Lines.BatchNumbers.Quantity = 0;
+                                                    }
+                                                    else
+                                                    {
+                                                        oDocument.Lines.BatchNumbers.Quantity -= qty;
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -157,8 +188,15 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                     else
                     {
                         if (sap.oCom.InTransaction)
+                        {
                             sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
-                        if (UpdateStatus(int.Parse(CurrentDocNum), out string errMsg) < 0) throw new Exception(errMsg);
+                        }
+
+                        if (UpdateStatus(int.Parse(CurrentDocNum), out string errMsg) < 0)
+                        {
+                            throw new Exception(errMsg);
+                        }
+                        ClearAllocateItemTable(int.Parse(CurrentDocNum));
                         Log($"{key }\n {success_status }\n  { CurrentDocNum } \n");
                         ft_General.UpdateStatus(key, success_status, "", CurrentDocNum);
                     }
@@ -190,7 +228,41 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                 errorMsg = excep.ToString();
                 return -1;
             }
+        }
 
+        static void ClearAllocateItemTable(int absentry)
+        {
+            var conn = new SqlConnection(Program._DbMidwareConnStr);
+            var result = conn.Execute("sp_PickList_ClearAllocateItem",
+             new { AbsEntry = absentry },
+             commandType: CommandType.StoredProcedure);
+        }
+
+        static DataTable GetPickLineBatches(int absentry, int linenum)
+        {
+            DataTable dataTable = new DataTable();
+
+            string query = $"SELECT [SODocEntry], [SOLineNum], [PickListDocEntry], [PickListLineNum], [ItemCode], [ItemDesc], [Batch], SUM([Quantity]) [Quantity] FROM zmwPickListAllocateItem " +
+                           $"WHERE PickListDocEntry = {absentry} AND PickListLineNum = {linenum} AND IsCancelled = 0 " +
+                           $"GROUP BY [SODocEntry], [SOLineNum], [PickListDocEntry], [PickListLineNum], [ItemCode], [ItemDesc], [Batch] " +
+                           $"HAVING SUM(Quantity) > 0;";
+            using (SqlConnection connection = new SqlConnection(Program._DbMidwareConnStr))
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                    {
+                        DataTable table = new DataTable();
+
+                        adapter.Fill(table);
+
+                        return table;
+                    }
+                }
+
+            }
         }
     }
 }
