@@ -170,6 +170,9 @@ namespace IMAppSapMidware_NetCore.Helper.SQL
                         var qty = double.Parse(dt.Rows[i]["quantity"].ToString());
                         oDoc.Lines.Quantity = double.Parse(dt.Rows[i]["quantity"].ToString());
                         oDoc.Lines.WarehouseCode = dt.Rows[i]["whscode"].ToString();
+                        if (dt.Rows[i]["Machine"].ToString() != "")
+                            oDoc.Lines.CostingCode = dt.Rows[i]["Machine"].ToString();
+                            //oDoc.Lines.CostingCode = "BLW-BWM1";
 
                         // add in the pur in remark 
                         // 20210403
