@@ -80,7 +80,6 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                         sap.oCom.StartTransaction();
 
                     List<int> SOdocEntries = new List<int>();
-                    //List<int> RIdocEntries = new List<int>();
 
                     for (int x = 0; x < oPickLists.Lines.Count; x++)
                     {
@@ -91,11 +90,6 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                             SOdocEntries.Add(oPickLists.Lines.OrderEntry);
                             continue;
                         }
-                        //if (oPickLists.Lines.BaseObjectType == "13")
-                        //{
-                        //    RIdocEntries.Add(oPickLists.Lines.OrderEntry);
-                        //    continue;
-                        //}
                     }
 
                     if (SOdocEntries != null && SOdocEntries.Count > 0)
