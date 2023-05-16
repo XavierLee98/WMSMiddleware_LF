@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using IMAppSapMidware_NetCore.Helper.SQL;
+using IMAppSapMidware_NetCore.Models.PickList;
 using IMAppSapMidware_NetCore.Models.SAPModels;
 using Microsoft.Data.SqlClient;
 using SAPbobsCOM;
@@ -171,7 +172,95 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
 
                         }
                     }
+
                     int retcode = oPickLists.Update();
+
+
+                    if (retcode != 0)
+                    {
+                        if (sap.oCom.InTransaction)
+                            sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+                        throw new Exception(sap.oCom.GetLastErrorDescription());
+                    }
+
+
+
+                    #region Assigned Back Other Affected PickList
+                    var pickLists = new List<AllocationItem>();
+
+
+
+                    //var pickLists = LoadSOBatchTransaction(int.Parse(CurrentDocNum), int.Parse(dt.Rows[i]["SourceLineNum"].ToString()), int.Parse(dt.Rows[i]["BaseEntry"].ToString()), int.Parse(dt.Rows[i]["BaseLine"].ToString()));
+
+                    #endregion
+                    //    //if (pickLists != null && pickLists.Count > 0 && pickLists.Sum(x => x.ActualPickQty) > 0)
+                    //    //{
+                    //    //    var distinctPickNoList = pickLists.Select(x => x.SODocEntry).Distinct().ToList();
+
+                    //    //    foreach (var picklistNo in distinctPickNoList)
+                    //    //    {
+                    //    //        if (!oPickLists.GetByKey(picklistNo))
+                    //    //        {
+                    //    //            throw new Exception(sap.oCom.GetLastErrorDescription());
+                    //    //        }
+
+                    //    //        var currentPKBatches = pickLists.Where(x => x.PickListDocEntry == picklistNo && x.ActualPickQty > 0).ToList();
+
+                    //    //        if (currentPKBatches == null || currentPKBatches.Count <= 0) continue;
+
+                    //    //        for(int a=0; a <oPickLists.Lines.Count;a++)
+                    //    //        {
+                    //    //            oPickLists.Lines.SetCurrentLine(a);
+                    //    //            bool isPickLinefound = false;
+                    //    //            for (int b = 0; b < currentPKBatches.Count; b++) 
+                    //    //            {
+                    //    //                if(oPickLists.Lines.LineNumber == currentPKBatches[b].PickListLineNum)
+                    //    //                {
+                    //    //                    isPickLinefound = true;
+                    //    //                    break;
+                    //    //                }
+
+                    //    //                if (isPickLinefound)
+                    //    //                {
+                    //    //                    if (oPickLists.Lines.PickStatus == BoPickStatus.ps_Closed) continue;
+
+
+                    //    //                    if (oPickLists.Lines.BatchNumbers.Count>0)
+                    //    //                    {
+                    //    //                        var isPickBatchFound = false;
+
+                    //    //                        for(int c = 0; c< oPickLists.Lines.BatchNumbers.Count; c++)
+                    //    //                        {
+                    //    //                            if(oPickLists.Lines.BatchNumbers.BatchNumber == currentPKBatches[b].DistNumber)
+                    //    //                            {
+                    //    //                                isPickBatchFound = true;
+                    //    //                                break;
+                    //    //                            }
+                    //    //                        }
+
+                    //    //                        if (isPickBatchFound)
+                    //    //                        {
+                    //    //                            oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
+                    //    //                        }
+                    //    //                        else
+                    //    //                        {
+                    //    //                            oPickLists.Lines.BatchNumbers.Add();
+                    //    //                            oPickLists.Lines.BatchNumbers.BatchNumber = currentPKBatches[b].DistNumber;
+                    //    //                            oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
+                    //    //                            oPickLists.Lines.BatchNumbers.BaseLineNumber = oPickLists.Lines.LineNumber;
+                    //    //                        }
+
+                    //    //                    }
+                    //    //                    else
+                    //    //                    {
+                    //    //                        oPickLists.Lines.BatchNumbers.BatchNumber = currentPKBatches[b].DistNumber;
+                    //    //                        oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
+                    //    //                        oPickLists.Lines.BatchNumbers.BaseLineNumber = oPickLists.Lines.LineNumber;
+                    //    //                    }
+                    //    //                }
+                    //    //            }
+                    //    //        }
+                    //    //    }
 
                     if (retcode != 0)
                     {
@@ -202,6 +291,25 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                 ft_General.UpdateError("Clear OPKL", ex.Message);
                 Log($"{currentKey }\n {currentStatus }\n { ex.Message } \n");
                 ft_General.UpdateStatus(currentKey, currentStatus, ex.Message, CurrentDocNum);
+            }
+        }
+
+        static List<AllocationItem> LoadSOBatchTransaction(int absentry, int pickentry, int sodocentry, int solinenum)
+        {
+            try
+            {
+                SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
+
+                var list = conn.Query<AllocationItem>($"sp_PickList_GetSOLineBatches",
+                                new { absentry = absentry, picklinenum = pickentry, docentry = sodocentry, solinenum = solinenum },
+                                commandType: CommandType.StoredProcedure,
+                                commandTimeout: 0).ToList();
+                return list;
+            }
+            catch (Exception ex)
+            {
+                Log($"{ ex.Message } \n");
+                return null;
             }
         }
 
