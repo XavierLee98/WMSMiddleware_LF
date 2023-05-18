@@ -478,6 +478,184 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
 #endregion
 
 #region oldcode2
+//for (int i = 0; i < dt.Rows.Count; i++)
+//{
+//    #region Start assign SO
+//    var currentBatchlist = LoadPickTransaction(int.Parse(CurrentDocNum), int.Parse(dt.Rows[i]["SourceLineNum"].ToString()));
+
+//    if (currentBatchlist.Sum(x => x.DraftQty) > 0)
+//    {
+//        var currentSODocEntry = currentBatchlist.FirstOrDefault().SODocEntry;
+//        var currentSODocLineNum = currentBatchlist.FirstOrDefault().SOLineNum;
+
+//        oDocument = (SAPbobsCOM.Documents)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oOrders);
+//        if (!oDocument.GetByKey(currentSODocEntry))
+//        {
+//            throw new Exception(sap.oCom.GetLastErrorDescription());
+//        }
+
+//        for (int j = 0; j < currentBatchlist.Count; j++)
+//        {
+//            if (currentBatchlist[j].DraftQty <= 0) continue;
+
+//            bool isSOLineFound = false;
+
+//            for (int k = 0; k < oDocument.Lines.Count; k++)
+//            {
+//                oDocument.Lines.SetCurrentLine(k);
+
+//                if (oDocument.Lines.LineNum == currentBatchlist[j].SOLineNum)
+//                {
+//                    isSOLineFound = true;
+//                    break;
+//                }
+//            }
+
+//            if (isSOLineFound)
+//            {
+//                bool isBatchFound = false;
+//                var test = oDocument.Lines.BatchNumbers.Count;
+//                var test1 = oDocument.Lines.BatchNumbers.BatchNumber;
+
+//                if (oDocument.Lines.BatchNumbers.Count - 1 == 0 && oDocument.Lines.BatchNumbers.BatchNumber == "")
+//                {
+//                    oDocument.Lines.BatchNumbers.BatchNumber = currentBatchlist[j].DistNumber;
+//                    oDocument.Lines.BatchNumbers.Quantity = double.Parse(currentBatchlist[j].DraftQty.ToString());
+//                }
+//                else
+//                {
+//                    for (int l = 0; l < oDocument.Lines.BatchNumbers.Count; l++)
+//                    {
+//                        oDocument.Lines.BatchNumbers.SetCurrentLine(l);
+
+//                        if (oDocument.Lines.LineStatus == BoStatus.bost_Close) continue;
+
+//                        if (oDocument.Lines.BatchNumbers.BatchNumber == currentBatchlist[j].DistNumber)
+//                        {
+//                            isBatchFound = true;
+//                            break;
+//                        }
+//                    }
+
+//                    if (isBatchFound)
+//                    {
+//                        oDocument.Lines.BatchNumbers.Quantity += double.Parse(currentBatchlist[j].DraftQty.ToString());
+//                    }
+//                    else
+//                    {
+//                        oDocument.Lines.BatchNumbers.Add();
+//                        oDocument.Lines.BatchNumbers.BatchNumber = currentBatchlist[j].DistNumber;
+//                        oDocument.Lines.BatchNumbers.Quantity = double.Parse(currentBatchlist[j].DraftQty.ToString());
+//                    }
+//                }
+
+//            }
+//        }
+
+//        retcode = oDocument.Update();
+
+//        if (retcode != 0)
+//        {
+//            if (sap.oCom.InTransaction)
+//                sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+
+//            string message = sap.oCom.GetLastErrorDescription().ToString().Replace("'", "");
+//            Log($"{key }\n {failed_status }\n { message } \n");
+//            ft_General.UpdateStatus(key, failed_status, message, CurrentDocNum);
+//        }
+//    }
+//    #endregion
+
+//    oPickLists = (SAPbobsCOM.PickLists)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oPickLists);
+
+//    //#region Assigned Back Other Affected PickList
+//    //var pickLists = LoadSOBatchTransaction(int.Parse(CurrentDocNum), int.Parse(dt.Rows[i]["SourceLineNum"].ToString()), int.Parse(dt.Rows[i]["BaseEntry"].ToString()), int.Parse(dt.Rows[i]["BaseLine"].ToString()));
+//    //if (pickLists != null && pickLists.Count > 0 && pickLists.Sum(x => x.ActualPickQty) > 0)
+//    //{
+//    //    var distinctPickNoList = pickLists.Select(x => x.SODocEntry).Distinct().ToList();
+
+//    //    foreach (var picklistNo in distinctPickNoList)
+//    //    {
+//    //        if (!oPickLists.GetByKey(picklistNo))
+//    //        {
+//    //            throw new Exception(sap.oCom.GetLastErrorDescription());
+//    //        }
+
+//    //        var currentPKBatches = pickLists.Where(x => x.PickListDocEntry == picklistNo && x.ActualPickQty > 0).ToList();
+
+//    //        if (currentPKBatches == null || currentPKBatches.Count <= 0) continue;
+
+//    //        for(int a=0; a <oPickLists.Lines.Count;a++)
+//    //        {
+//    //            oPickLists.Lines.SetCurrentLine(a);
+//    //            bool isPickLinefound = false;
+//    //            for (int b = 0; b < currentPKBatches.Count; b++) 
+//    //            {
+//    //                if(oPickLists.Lines.LineNumber == currentPKBatches[b].PickListLineNum)
+//    //                {
+//    //                    isPickLinefound = true;
+//    //                    break;
+//    //                }
+
+//    //                if (isPickLinefound)
+//    //                {
+//    //                    if (oPickLists.Lines.PickStatus == BoPickStatus.ps_Closed) continue;
+
+
+//    //                    if (oPickLists.Lines.BatchNumbers.Count>0)
+//    //                    {
+//    //                        var isPickBatchFound = false;
+
+//    //                        for(int c = 0; c< oPickLists.Lines.BatchNumbers.Count; c++)
+//    //                        {
+//    //                            if(oPickLists.Lines.BatchNumbers.BatchNumber == currentPKBatches[b].DistNumber)
+//    //                            {
+//    //                                isPickBatchFound = true;
+//    //                                break;
+//    //                            }
+//    //                        }
+
+//    //                        if (isPickBatchFound)
+//    //                        {
+//    //                            oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
+//    //                        }
+//    //                        else
+//    //                        {
+//    //                            oPickLists.Lines.BatchNumbers.Add();
+//    //                            oPickLists.Lines.BatchNumbers.BatchNumber = currentPKBatches[b].DistNumber;
+//    //                            oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
+//    //                            oPickLists.Lines.BatchNumbers.BaseLineNumber = oPickLists.Lines.LineNumber;
+//    //                        }
+
+//    //                    }
+//    //                    else
+//    //                    {
+//    //                        oPickLists.Lines.BatchNumbers.BatchNumber = currentPKBatches[b].DistNumber;
+//    //                        oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
+//    //                        oPickLists.Lines.BatchNumbers.BaseLineNumber = oPickLists.Lines.LineNumber;
+//    //                    }
+//    //                }
+//    //            }
+//    //        }
+//    //    }
+
+//    //    retcode = oPickLists.Update();
+
+//    //    if (retcode != 0)
+//    //    {
+//    //        if (sap.oCom.InTransaction)
+//    //            sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+
+//    //        string message = sap.oCom.GetLastErrorDescription().ToString().Replace("'", "");
+//    //        Log($"{key }\n {failed_status }\n { message } \n");
+//    //        ft_General.UpdateStatus(key, failed_status, message, CurrentDocNum);
+//    //    }
+//    //}
+//    //#endregion
+//}
+#endregion
+
+#region oldcode2
 
 //static List<AllocationItem> LoadSOBatchTransaction(int absentry, int pickentry, int sodocentry, int solinenum)
 //{
