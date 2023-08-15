@@ -35,7 +35,7 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
             Program.FilLogger?.Log(message);
         }
 
-        //Select batch From PickListAllocateTable (-)
+        //Select batch From PickListAllocateTable (-)   
 
         public static void ClearAll()
         {
@@ -86,91 +86,20 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                     {
                         oPickLists.Lines.SetCurrentLine(x);
                         if (oPickLists.Lines.PickStatus == BoPickStatus.ps_Closed) continue;
+                        oPickLists.Lines.PickedQuantity = 0;
+
                         if (oPickLists.Lines.BaseObjectType == "17")
                         {
                             SOdocEntries.Add(new SOLine { SODocEntry = oPickLists.Lines.OrderEntry, SOLineNum = oPickLists.Lines.OrderRowID });
-                            continue;
                         }
-                    }
 
-                    if (SOdocEntries != null && SOdocEntries.Count > 0)
-                    {
-                        var distinctSONo = SOdocEntries.GroupBy(x=>x.SODocEntry).Select(y=>y.Key).ToList();
-
-                        for (int y = 0; y < distinctSONo.Count; y++)
+                        if (oPickLists.Lines.BatchNumbers.Count - 1 > 0 || oPickLists.Lines.BatchNumbers.BatchNumber != "")
                         {
-                            oDocument = (SAPbobsCOM.Documents)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oOrders);
-
-                            if (!oDocument.GetByKey(distinctSONo[y]))
+                            for (int y = 0; y < oPickLists.Lines.BatchNumbers.Count; y++)
                             {
-                                throw new Exception(sap.oCom.GetLastErrorDescription());
+                                oPickLists.Lines.BatchNumbers.SetCurrentLine(y);
+                                oPickLists.Lines.BatchNumbers.Quantity = 0;
                             }
-
-                            for (int z = 0; z < oDocument.Lines.Count; z++)
-                            {
-                                oDocument.Lines.SetCurrentLine(z);
-                                if (oPickLists.Lines.PickStatus == BoPickStatus.ps_Closed) continue;
-
-                                for (int x = 0; x < oPickLists.Lines.Count; x++)
-                                {
-                                    oPickLists.Lines.SetCurrentLine(x);
-                                    if (oPickLists.Lines.PickStatus == BoPickStatus.ps_Closed) continue;
-
-                                    if (oPickLists.Lines.OrderEntry == oDocument.Lines.DocEntry && oPickLists.Lines.OrderRowID == oDocument.Lines.LineNum && oPickLists.Lines.BaseObjectType == "17")
-                                    {
-                                        var linenum = oPickLists.Lines.LineNumber;
-                                        DataTable batchTable = GetPickLineBatches(int.Parse(CurrentDocNum), oPickLists.Lines.LineNumber);
-
-                                        oPickLists.Lines.PickedQuantity = 0;
-
-                                        if (batchTable.Rows.Count > 0)
-                                        {
-                                            if (!string.IsNullOrEmpty(oDocument.Lines.BatchNumbers.BatchNumber))
-                                            {
-                                                double qty = 0;
-                                                foreach (DataRow row in batchTable.Rows)
-                                                {
-                                                    bool isBatchFound = false;
-
-                                                    for (int i = 0; i < oDocument.Lines.BatchNumbers.Count; i++)
-                                                    {
-                                                        oDocument.Lines.BatchNumbers.SetCurrentLine(i);
-
-                                                        if (row["Batch"].ToString() == oDocument.Lines.BatchNumbers.BatchNumber)
-                                                        {
-                                                            isBatchFound = true;
-                                                            qty = double.Parse(row["Quantity"].ToString());
-                                                            break;
-                                                        }
-                                                    }
-
-                                                    if (isBatchFound)
-                                                    {
-                                                        if (oDocument.Lines.BatchNumbers.Quantity <= qty)
-                                                        {
-                                                            oDocument.Lines.BatchNumbers.Quantity = 0;
-                                                        }
-                                                        else
-                                                        {
-                                                            oDocument.Lines.BatchNumbers.Quantity -= qty;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            int result = oDocument.Update();
-
-                            if (result != 0)
-                            {
-                                if (sap.oCom.InTransaction)
-                                    sap.oCom.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
-                                throw new Exception(sap.oCom.GetLastErrorDescription());
-                            }
-
                         }
                     }
 
@@ -183,78 +112,67 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                         throw new Exception(sap.oCom.GetLastErrorDescription());
                     }
 
-                    //#region Assigned Back Other Affected PickList
-                    var AllocatedPickList = new List<AllocationItem>();
+                    DataTable batchesTable = GetPickLineBatches(int.Parse(CurrentDocNum));
 
-                    foreach (var so in SOdocEntries)
-                    {
-                        AllocatedPickList.AddRange(LoadSOBatchTransaction(int.Parse(CurrentDocNum), so.SODocEntry, so.SOLineNum));
-                    }
+                    List<int> distinctSONo = null;
 
-                    var picklistnoList = AllocatedPickList.GroupBy(x => x.PickListDocEntry).Select(y => y.Key).ToList();
-                    if (picklistnoList != null && picklistnoList.Count > 0)
+                    if (SOdocEntries != null && SOdocEntries.Count > 0 && batchesTable.Rows.Count >0)
                     {
-                        foreach (var pickno in picklistnoList)
+                        distinctSONo = SOdocEntries.GroupBy(x => x.SODocEntry).Select(y => y.Key).ToList();
+
+                        for (int i = 0; i < distinctSONo.Count; i++)
                         {
-                            if (!oPickLists.GetByKey(pickno))
+                            oDocument = (SAPbobsCOM.Documents)sap.oCom.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oOrders);
+
+                            if (!oDocument.GetByKey(distinctSONo[i]))
                             {
                                 throw new Exception(sap.oCom.GetLastErrorDescription());
                             }
 
-                            var currentPKBatches = AllocatedPickList.Where(x => x.PickListDocEntry == pickno && x.ActualPickQty > 0).ToList();
-                            if (currentPKBatches == null || currentPKBatches.Count <= 0) continue;
-                            for (int a = 0; a < oPickLists.Lines.Count; a++)
+                            for (int j = 0; j < oDocument.Lines.Count; j++)
                             {
-                                oPickLists.Lines.SetCurrentLine(a);
-                                bool isPickLinefound = false;
+                                oDocument.Lines.SetCurrentLine(j);
 
-                                for (int b = 0; b < currentPKBatches.Count; b++)
+                                if (oDocument.Lines.LineStatus == BoStatus.bost_Close) continue;
+
+                                if (!string.IsNullOrEmpty(oDocument.Lines.BatchNumbers.BatchNumber))
                                 {
-                                    if (oPickLists.Lines.LineNumber == currentPKBatches[b].PickListLineNum)
+                                    foreach (DataRow row in batchesTable.Rows)
                                     {
-                                        isPickLinefound = true;
-                                        break;
-                                    }
+                                        double qty = 0;
+                                        bool isBatchFound = false;
 
-                                    if (isPickLinefound)
-                                    {
-                                        if (oPickLists.Lines.PickStatus == BoPickStatus.ps_Closed) continue;
-
-                                        if (oPickLists.Lines.BatchNumbers.Count - 1 > 0 && oPickLists.Lines.BatchNumbers.BatchNumber != "")
+                                        if (Convert.ToInt32(row["SODocEntry"]) == distinctSONo[i] && Convert.ToInt32(row["SOLineNum"]) == oDocument.Lines.LineNum)
                                         {
-                                            var isPickBatchFound = false;
-
-                                            for (int c = 0; c < oPickLists.Lines.BatchNumbers.Count; c++)
+                                            for (int m = 0; m < oDocument.Lines.BatchNumbers.Count; m++)
                                             {
-                                                if (oPickLists.Lines.BatchNumbers.BatchNumber == currentPKBatches[b].DistNumber)
+                                                oDocument.Lines.BatchNumbers.SetCurrentLine(m);
+
+                                                if (row["DistNumber"].ToString() == oDocument.Lines.BatchNumbers.BatchNumber)
                                                 {
-                                                    isPickBatchFound = true;
+                                                    isBatchFound = true;
+                                                    qty = double.Parse(row["TotalQty"].ToString());
                                                     break;
                                                 }
                                             }
 
-                                            if (isPickBatchFound)
-                                            {
-                                                oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
-                                            }
-                                            else
-                                            {
-                                                oPickLists.Lines.BatchNumbers.Add();
-                                                oPickLists.Lines.BatchNumbers.BatchNumber = currentPKBatches[b].DistNumber;
-                                                oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
-                                                oPickLists.Lines.BatchNumbers.BaseLineNumber = oPickLists.Lines.LineNumber;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            oPickLists.Lines.BatchNumbers.BatchNumber = currentPKBatches[b].DistNumber;
-                                            oPickLists.Lines.BatchNumbers.Quantity = int.Parse(currentPKBatches[b].ActualPickQty.ToString());
-                                            oPickLists.Lines.BatchNumbers.BaseLineNumber = oPickLists.Lines.LineNumber;
+                                                if (isBatchFound)
+                                                {
+                                                    if (oDocument.Lines.BatchNumbers.Quantity <= qty)
+                                                    {
+                                                        oDocument.Lines.BatchNumbers.Quantity = 0;
+                                                    }
+                                                    else
+                                                    {
+                                                        oDocument.Lines.BatchNumbers.Quantity -= qty;
+                                                    }
+                                                }
                                         }
                                     }
                                 }
                             }
-                            retcode = oPickLists.Update();
+
+                            retcode = oDocument.Update();
 
                             if (retcode != 0)
                             {
@@ -264,7 +182,12 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                             }
                         }
                     }
-                    //#endregion
+
+                    var AllocatedPickList = new List<AllocationItem>();
+                    foreach (var so in SOdocEntries)
+                    {
+                        AllocatedPickList.AddRange(LoadSOBatchTransaction(int.Parse(CurrentDocNum), so.SODocEntry, so.SOLineNum));
+                    }
 
                     if (retcode != 0)
                     {
@@ -283,7 +206,6 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                         { 
                             throw new Exception(errMsg);
                         }
-                        //ClearAllocateItemTable(int.Parse(CurrentDocNum));
                         Log($"{key }\n {success_status }\n  { CurrentDocNum } \n");
                         ft_General.UpdateStatus(key, success_status, "", CurrentDocNum);
                     }
@@ -295,25 +217,6 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                 ft_General.UpdateError("Clear OPKL", ex.Message);
                 Log($"{currentKey }\n {currentStatus }\n { ex.Message } \n");
                 ft_General.UpdateStatus(currentKey, currentStatus, ex.Message, CurrentDocNum);
-            }
-        }
-
-        static List<AllocationItem> LoadSOBatchTransaction(int absentry, int sodocentry, int solinenum)
-        {
-            try
-            {
-                SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
-
-                var list = conn.Query<AllocationItem>($"sp_PickList_GetSOLineBatches",
-                                new { absentry = absentry, docentry = sodocentry, solinenum = solinenum },
-                                commandType: CommandType.StoredProcedure,
-                                commandTimeout: 0).ToList();
-                return list;
-            }
-            catch (Exception ex)
-            {
-                Log($"{ ex.Message } \n");
-                return null;
             }
         }
 
@@ -336,28 +239,55 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
             }
         }
 
-        //static void ClearAllocateItemTable(int absentry)
-        //{
-        //    var conn = new SqlConnection(Program._DbMidwareConnStr);
-        //    var result = conn.Execute("sp_PickList_ClearAllocateItem",
-        //     new { AbsEntry = absentry },
-        //     commandType: CommandType.StoredProcedure);
-        //}
+        static void InsertCheckRequest(int absentry, List<int> otherSOList)
+        {
+            try
+            {
+                foreach(var soNo in otherSOList)
+                {
+                    LoadSOBatchTransaction(absentry, soNo);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"{ ex.Message } \n");
+            }
+        }
 
-        static DataTable GetPickLineBatches(int absentry, int linenum)
+        static List<AllocationItem> LoadSOBatchTransaction(int absentry, int sodocentry, int solinenum = -1)
+        {
+            try
+            {
+                SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
+
+                var list = conn.Query<AllocationItem>($"sp_PickList_GetSOLineBatches",
+                                new { absentry = absentry, docentry = sodocentry, solinenum = solinenum },
+                                commandType: CommandType.StoredProcedure,
+                                commandTimeout: 0).ToList();
+                return list;
+            }
+            catch (Exception ex)
+            {
+                Log($"{ ex.Message } \n");
+                return null;
+            }
+        }
+
+        static DataTable GetPickLineBatches(int absentry)
         {
             DataTable dataTable = new DataTable();
 
-            string query = $"SELECT [SODocEntry], [SOLineNum], [PickListDocEntry], [PickListLineNum], [ItemCode], [ItemDesc], [Batch], SUM([Quantity]) [Quantity] FROM zmwPickListAllocateItem " +
-                           $"WHERE PickListDocEntry = {absentry} AND PickListLineNum = {linenum} AND IsCancelled = 0 " +
-                           $"GROUP BY [SODocEntry], [SOLineNum], [PickListDocEntry], [PickListLineNum], [ItemCode], [ItemDesc], [Batch] " +
-                           $"HAVING SUM(Quantity) > 0;";
             using (SqlConnection connection = new SqlConnection(Program._DbMidwareConnStr))
             {
                 connection.Open();
 
-                using (SqlCommand command = new SqlCommand(query, connection))
+                using (SqlCommand command = new SqlCommand("sp_PickList_GetPickLineBatches", connection))
                 {
+
+                    command.CommandType = CommandType.StoredProcedure;
+
+                    command.Parameters.AddWithValue("@absentry", absentry);
+                    //command.Parameters.AddWithValue("@linenum", -1);
                     using (SqlDataAdapter adapter = new SqlDataAdapter(command))
                     {
                         DataTable table = new DataTable();
@@ -372,3 +302,5 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
         }
     }
 }
+
+
