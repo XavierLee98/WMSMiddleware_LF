@@ -140,6 +140,7 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
                                             {
                                                 Console.WriteLine(dr[x]["batchnumber"].ToString() +" "+ double.Parse(dr[x]["Quantity"].ToString()));
                                                 oPickLists.Lines.BatchNumbers.Quantity = double.Parse(dr[x]["Quantity"].ToString());
+                                                batch_cnt++;
                                             }
                                             else
                                             {
