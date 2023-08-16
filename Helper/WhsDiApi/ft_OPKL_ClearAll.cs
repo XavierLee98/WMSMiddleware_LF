@@ -311,24 +311,24 @@ namespace IMAppSapMidware_NetCore.Helper.WhsDiApi
             }
         }
 
-        static List<AllocationItem> LoadSOBatchTransaction(int absentry, int sodocentry, int solinenum = -1)
-        {
-            try
-            {
-                SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
+        //static List<AllocationItem> LoadSOBatchTransaction(int absentry, int sodocentry, int solinenum = -1)
+        //{
+        //    try
+        //    {
+        //        SqlConnection conn = new SqlConnection(Program._DbMidwareConnStr);
 
-                var list = conn.Query<AllocationItem>($"sp_PickList_GetSOLineBatches",
-                                new { absentry = absentry, docentry = sodocentry, solinenum = solinenum },
-                                commandType: CommandType.StoredProcedure,
-                                commandTimeout: 0).ToList();
-                return list;
-            }
-            catch (Exception ex)
-            {
-                Log($"{ ex.Message } \n");
-                return null;
-            }
-        }
+        //        var list = conn.Query<AllocationItem>($"sp_PickList_GetSOLineBatches",
+        //                        new { absentry = absentry, docentry = sodocentry, solinenum = solinenum },
+        //                        commandType: CommandType.StoredProcedure,
+        //                        commandTimeout: 0).ToList();
+        //        return list;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log($"{ ex.Message } \n");
+        //        return null;
+        //    }
+        //}
 
 
  
